@@ -14,13 +14,12 @@ const createOrder = async (userId, rawItems) => {
   session.startTransaction();
 
   try {
-    // Deduplicate productIds
+  
     const productIdSet = [...new Set(rawItems.map((i) => i.productId))];
     if (productIdSet.length !== rawItems.length) {
       throw new AppError('Duplicate products in order are not allowed', 400);
     }
 
-    // Fetch all products within the transaction
     const products = await Product.find({
       _id: { $in: productIdSet },
       isActive: true,
@@ -37,7 +36,6 @@ const createOrder = async (userId, rawItems) => {
       products.map((p) => [p._id.toString(), p])
     );
 
-    // Validate stock and build enriched order items
     const enrichedItems = rawItems.map((item) => {
       const product = productMap[item.productId];
       if (!product) {
@@ -56,10 +54,8 @@ const createOrder = async (userId, rawItems) => {
       };
     });
 
-    // Calculate total before saving
     const totalAmount = calculateTotal(enrichedItems);
 
-    // Atomically deduct stock for all products
     for (const item of enrichedItems) {
       const result = await Product.findOneAndUpdate(
         { _id: item.productId, stock: { $gte: item.quantity } },
@@ -75,7 +71,6 @@ const createOrder = async (userId, rawItems) => {
       }
     }
 
-    // Save order
     const [order] = await Order.create(
       [{ userId, items: enrichedItems, totalAmount }],
       { session }

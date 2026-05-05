@@ -9,11 +9,9 @@ const {
   updateProductSchema,
 } = require('../validators/productValidator');
 
-// Public routes
 router.get('/', productController.getAllProducts);
 router.get('/:id', productController.getProductById);
 
-// Admin-only routes
 router.post(
   '/',
   authMiddleware,
